@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Guardian</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0a0c14;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; padding: 12px;
+}
+.shell {
+  width: 480px; height: 780px;
+  background: #13151f;
+  border-radius: 20px;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+  border: 1px solid #1e2235;
+}
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, #0d2a4a, #0a1a3a);
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid #1e2235;
+  flex-shrink: 0;
+}
+.logo {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: linear-gradient(135deg, #1565c0, #0d47a1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.hinfo h2 { color: #fff; font-size: 14px; font-weight: 600; }
+.hinfo span { color: #6b9fd4; font-size: 11px; }
+.hstatus { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+.pulse { width: 6px; height: 6px; background: #4caf50; border-radius: 50%; animation: pulse 2s infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.hbadge {
+  margin-left: auto; font-size: 10px; color: rgba(107,159,212,0.8);
+  border: 1px solid rgba(107,159,212,0.2); border-radius: 8px; padding: 2px 7px;
+}
+
+/* ── Mode tabs ── */
+.modes {
+  display: flex; border-bottom: 1px solid #1e2235; flex-shrink: 0;
+  background: #0f1120;
+}
+.mode-btn {
+  flex: 1; padding: 9px 4px; font-size: 11px; text-align: center;
+  cursor: pointer; color: #4a5580; border: none; background: none;
+  border-bottom: 2px solid transparent; transition: all .15s;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.mode-btn .micon { font-size: 15px; }
+.mode-btn.active { color: #4a90d9; border-bottom-color: #1565c0; background: rgba(21,101,192,0.06); }
+.mode-btn:hover:not(.active) { color: #6b9fd4; background: rgba(255,255,255,0.02); }
+
+/* ── Messages ── */
+.messages {
+  flex: 1; padding: 12px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-track { background: transparent; }
+.messages::-webkit-scrollbar-thumb { background: #1e2235; border-radius: 2px; }
+
+.msg { max-width: 84%; display: flex; flex-direction: column; gap: 3px; }
+.msg.bot { align-self: flex-start; }
+.msg.user { align-self: flex-end; }
+.bubble {
+  padding: 9px 13px; border-radius: 14px;
+  font-size: 13px; line-height: 1.55; word-break: break-word;
+  white-space: pre-wrap;
+}
+.bot .bubble {
+  background: #1a1e30; color: #c8d4e8;
+  border: 1px solid #252a40;
+  border-bottom-left-radius: 4px;
+}
+.user .bubble {
+  background: linear-gradient(135deg, #1565c0, #1976d2);
+  color: #fff; border-bottom-right-radius: 4px;
+}
+.mtime { font-size: 10px; color: #3a4060; padding: 0 4px; }
+.bot .mtime { text-align: left; }
+.user .mtime { text-align: right; }
+
+/* source badge */
+.src { display: inline-flex; align-items: center; gap: 3px; margin-top: 5px;
+  font-size: 10px; background: rgba(21,101,192,.15); color: #4a90d9;
+  border: 1px solid rgba(21,101,192,.2); border-radius: 8px; padding: 2px 7px; }
+
+/* typing */
+.typing-dots { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+.typing-dots span {
+  width: 5px; height: 5px; border-radius: 50%; background: #3a6fa8;
+  animation: blink 1.2s infinite;
+}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* card blocks inside messages */
+.info-card {
+  background: #0f1220; border: 1px solid #252a40; border-radius: 10px;
+  padding: 10px 12px; margin-top: 6px; font-size: 12px;
+}
+.info-card .card-title { color: #6b9fd4; font-size: 10px; text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 6px; }
+.info-row { display: flex; justify-content: space-between; padding: 4px 0;
+  border-bottom: 1px solid #1a1e2e; font-size: 12px; }
+.info-row:last-child { border: none; }
+.info-label { color: #4a5580; }
+.info-val { color: #c8d4e8; font-weight: 500; }
+.badge-ok { background: rgba(76,175,80,.15); color: #66bb6a; border: 1px solid rgba(76,175,80,.2); border-radius: 8px; padding: 1px 7px; font-size: 10px; }
+.badge-warn { background: rgba(255,152,0,.12); color: #ffa726; border: 1px solid rgba(255,152,0,.2); border-radius: 8px; padding: 1px 7px; font-size: 10px; }
+.badge-bad { background: rgba(239,83,80,.12); color: #ef5350; border: 1px solid rgba(239,83,80,.2); border-radius: 8px; padding: 1px 7px; font-size: 10px; }
+
+/* ── Quick buttons ── */
+.quick { padding: 6px 12px 8px; display: flex; flex-wrap: wrap; gap: 5px; flex-shrink: 0; }
+.qbtn {
+  background: #161928; border: 1px solid #252a40;
+  border-radius: 16px; color: #4a90d9; font-size: 11px;
+  padding: 4px 10px; cursor: pointer; transition: all .12s;
+}
+.qbtn:hover { background: #1565c0; border-color: #1565c0; color: #fff; }
+
+/* ── Input ── */
+.input-row {
+  padding: 10px 12px; background: #0f1120; border-top: 1px solid #1a1e2e;
+  display: flex; gap: 7px; flex-shrink: 0;
+}
+.input-row input {
+  flex: 1; background: #1a1e30; border: 1px solid #252a40;
+  border-radius: 10px; color: #c8d4e8; padding: 9px 13px;
+  font-size: 13px; outline: none; font-family: inherit;
+}
+.input-row input:focus { border-color: #1565c0; }
+.input-row input::placeholder { color: #3a4060; }
+.send-btn {
+  background: #1565c0; border: none; border-radius: 10px;
+  width: 40px; height: 40px; cursor: pointer; color: #fff; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background .12s;
+}
+.send-btn:hover { background: #1976d2; }
+.send-btn:disabled { opacity: .35; cursor: default; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="header">
+    <div class="logo">🛡️</div>
+    <div class="hinfo">
+      <h2>AI Guardian</h2>
+      <div class="hstatus">
+        <div class="pulse" id="pulse"></div>
+        <span id="stxt">Онлайн • Универсальный ассистент</span>
+      </div>
+    </div>
+    <div class="hbadge">Claude Sonnet</div>
+  </div>
+
+  <div class="modes">
+    <button class="mode-btn active" onclick="setMode('client')" id="m-client">
+      <span class="micon">👤</span>Клиент
+    </button>
+    <button class="mode-btn" onclick="setMode('operator')" id="m-operator">
+      <span class="micon">🎧</span>Оператор
+    </button>
+    <button class="mode-btn" onclick="setMode('newbie')" id="m-newbie">
+      <span class="micon">🎓</span>Новичок
+    </button>
+    <button class="mode-btn" onclick="setMode('hr')" id="m-hr">
+      <span class="micon">📋</span>HR
+    </button>
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="quick" id="quick"></div>
+
+  <div class="input-row">
+    <input type="text" id="inp" placeholder="Напишите ваш вопрос…" />
+    <button class="send-btn" id="sbtn" onclick="send()">➤</button>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  МОКОВАННАЯ БАЗА ДАННЫХ ВСЕХ СИСТЕМ
+// ═══════════════════════════════════════════════════════════
+const DB = {
+
+  // ── Антифрод / блокировки кошельков ──
+  wallets: {
+    'WLT-28847': {
+      owner: 'Карина Волкова', status: 'SOFT_BLOCK',
+      block_reason: 'Подозрение на мошенничество: операция на 45 000 ₽ от 20.06.2026',
+      can_self_unblock: true, required_action: 'Пройти KYC второго уровня (фото с паспортом)',
+      balance: '12 450 ₽', since: '2021'
+    },
+    'WLT-10021': {
+      owner: 'Михаил Орлов', status: 'HARD_BLOCK',
+      block_reason: 'Решение финмониторинга №ФМ-2026-447 от 15.06.2026 (115-ФЗ)',
+      can_self_unblock: false, required_action: 'Обратиться в комплаенс: compliance@bank.ru',
+      balance: '320 ₽', since: '2023'
+    },
+    'WLT-55301': {
+      owner: 'Анна Петрова', status: 'OK',
+      block_reason: null, can_self_unblock: null,
+      balance: '4 200 ₽', since: '2019'
+    },
+    'WLT-77412': {
+      owner: 'Дмитрий Сорокин', status: 'GOV_BLOCK',
+      block_reason: 'Арест по постановлению ФССП + задолженность ФНС',
+      can_self_unblock: false, required_action: 'Оплатить задолженности по реквизитам ниже',
+      balance: '890 ₽', since: '2022'
+    }
+  },
+
+  // ── ФССП / ФНС / Финцерт блокировки ──
+  gov_blocks: {
+    'WLT-77412': [
+      {
+        type: 'ФССП', doc: 'ИП-12345/2026', date: '01.04.2026',
+        amount: '18 200 ₽', authority: 'ОСП по Центральному р-ну г. Москвы',
+        bailiff: 'Петрова А.Н.', phone: '8(495)123-45-67',
+        payment: 'УФК по г. Москве, ИНН 7702070139, р/с 40302810000000000001, БИК 044525000'
+      },
+      {
+        type: 'ФНС', doc: 'Решение №456-НД от 10.04.2026', date: '10.04.2026',
+        amount: '12 000 ₽', authority: 'ИФНС №3 по г. Москве',
+        bailiff: null, phone: '8-800-222-2222',
+        payment: 'УФК по г. Москве (ИФНС №3), ИНН 7703037470, КПП 770301001, р/с 40101810045250010041'
+      }
+    ]
+  },
+
+  // ── Финмониторинг / Комплаенс (115-ФЗ) ──
+  compliance: {
+    'WLT-10021': {
+      reason_code: '115-ФЗ, ст. 7.2',
+      operation: 'Перевод 500 000 ₽ от физ.лица 15.06.2026',
+      required_docs: ['Договор займа или дарения', 'Справка 2-НДФЛ за 2025 год', 'Пояснение об источнике средств'],
+      deadline: '3 рабочих дня',
+      contact: 'compliance@bank.ru | тел. 8(495)000-00-01'
+    }
+  },
+
+  // ── Возвраты / диспуты ──
+  transactions: {
+    'TXN-88821': {
+      date: '22.06.2026', amount: 3000, type: 'tech_double_charge',
+      desc: 'Двойное списание в магазине "Пятёрочка"', auto_refund_ok: true
+    },
+    'TXN-44210': {
+      date: '20.06.2026', amount: 45000, type: 'fraud',
+      desc: 'Подозрительный перевод на незнакомый счёт', auto_refund_ok: false
+    },
+    'TXN-11190': {
+      date: '18.06.2026', amount: 1500, type: 'atm_error',
+      desc: 'Банкомат не выдал наличные', auto_refund_ok: true
+    }
+  },
+
+  // ── Рассрочки ──
+  installments: {
+    'WLT-28847': {
+      partner: 'Купи сейчас (партнёр банка)',
+      partner_url: 'https://partner-rassrochka.ru',
+      partner_phone: '8-800-555-01-01',
+      note: 'Банк не предоставляет услуги рассрочки напрямую. Все вопросы решает партнёр.'
+    }
+  },
+
+  // ── Финцерт (кибербезопасность) ──
+  fincert: {
+    contacts: 'fincert@cbr.ru | тел. 8(800)300-30-00',
+    hotline: 'Горячая линия ЦБ РФ: 8-800-300-3000 (бесплатно)',
+    report_url: 'https://www.cbr.ru/fincert/',
+    note: 'Финцерт — подразделение ЦБ РФ. Сообщайте о кибератаках, фишинге, хищениях.'
+  },
+
+  // ── HR: Регламенты для операторов ──
+  hr_regs: {
+    vacation: `📋 Оформление отпуска:
+1. Заявка в HR-портале за 14 дней до начала
+2. Тип: ежегодный оплачиваемый / за свой счёт
+3. Согласование с руководителем
+4. Приказ придёт на корпоративную почту
+Остаток дней: личный кабинет → «Мой отпуск»`,
+
+    sick: `🏥 Больничный:
+1. Уведомите руководителя в первый день болезни
+2. Получите листок нетрудоспособности у врача
+3. После выздоровления загрузите скан в HR-портал (раздел «Документы»)
+4. Пособие начислят в течение 10 рабочих дней
+ЭЛН оформляется через Госуслуги`,
+
+    salary: `💰 Зарплата:
+• Аванс: 25-го числа (40% оклада)
+• Основная часть: 10-го следующего месяца
+• Расчётный листок: личный кабинет → «Выплаты»
+• Реквизиты карты укажите в HR-портале в первые 3 дня`,
+
+    escalation: `⚡ Эскалация сложного кейса:
+1. Клиент агрессивен → тег «Эскалация» в CRM
+2. Немедленный звонок супервизору
+3. Время реакции супервизора: до 5 минут
+4. Передача диалога с полным контекстом`,
+
+    complaint_template: `✉️ Шаблон ответа на жалобу:
+
+Добрый день, [Имя клиента]!
+
+Спасибо, что сообщили нам о сложившейся ситуации. Приносим искренние извинения за доставленные неудобства.
+
+Ваше обращение зарегистрировано под номером [номер тикета]. Мы рассматриваем его в приоритетном порядке и ответим в течение 24 часов.
+
+С уважением,
+[Ваше имя], служба поддержки`,
+
+    refund_rules: `💳 Правила возврата средств:
+• До 5 000 ₽ — оператор одобряет самостоятельно
+• 5 000–50 000 ₽ — нужно подтверждение супервизора
+• Свыше 50 000 ₽ — решение финансового отдела (до 10 дней)
+• Создайте тикет в CRM с тегом «Возврат» и суммой
+• Срок зачисления: 3–5 рабочих дней`
+  },
+
+  // ── Адаптация новых сотрудников ──
+  onboarding: {
+    first_day: `👋 Первый день — чеклист:
+09:00 — HR-встреча, оформление документов, пропуск
+10:00 — знакомство с командой и руководителем
+11:00 — настройка рабочего места совместно с IT
+После обеда — начало вводного обучения (3 рабочих дня)
+🍽️ Обед за счёт компании первые 3 дня`,
+
+    access: `🔑 Доступы к системам:
+• Заявка создаётся автоматически при оформлении
+• Логин/пароль приходят на корпоративную почту
+• VPN: \\\\server\\docs\\IT\\vpn-setup.pdf
+• Telegram-поддержка: @it_help (ответ за 30 минут)
+• CRM, АБС, антифрод — доступы выдаёт IT в первый день`,
+
+    mentor: `👤 Наставник:
+• Назначается HR в первый день
+• Контакт — в вашем Welcome-письме
+• Встречи: ежедневно первые 2 недели, затем еженедельно
+• Если наставник недоступен → старший оператора или @team_support`,
+
+    salary: `💰 Выплата зарплаты:
+• Аванс: 25-го числа (40% оклада)
+• Основная часть: 10-го следующего месяца
+• Расчётный листок: личный кабинет → «Выплаты»
+• Реквизиты карты укажите в HR-портале в первые 3 дня`,
+
+    dresscode: `👔 Дресс-код: деловой casual
+✅ Можно: рубашки, блузы, брюки, джинсы без дыр
+❌ Нельзя: шорты, спортивная одежда, открытая обувь в офисе`,
+
+    culture: `🏢 Корпоративная культура:
+• Стендап: каждый понедельник в 10:00
+• Ежеквартальные ревью с руководителем
+• Открытая обратная связь — можно писать руководителю напрямую
+• Корпоративный Telegram: @company_team`
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+//  СИСТЕМНЫЕ ПРОМПТЫ ДЛЯ КАЖДОГО РЕЖИМА
+// ═══════════════════════════════════════════════════════════
+
+function buildSystem(mode) {
+  const base = `Ты — AI Guardian, интеллектуальный ассистент финтех-компании.
+Отвечай по-русски, структурированно, с эмодзи для навигации.
+Тон: профессиональный, эмпатичный, без бюрократии.
+Всегда предлагай конкретное следующее действие.`;
+
+  const db = JSON.stringify(DB, null, 2);
+
+  const modes = {
+    client: `${base}
+
+РЕЖИМ: Клиентская поддержка.
+Ты помогаешь клиентам решить проблемы с кошельком. У тебя есть доступ к базе данных всех систем.
+
+ОБРАБОТКА ЗАПРОСОВ:
+1. БЛОКИРОВКА КОШЕЛЬКА — спроси ID кошелька (формат WLT-XXXXX), найди в DB.wallets, объясни причину и шаги разблокировки.
+2. ВОЗВРАТ СРЕДСТВ — спроси номер транзакции (TXN-XXXXX) или опиши ситуацию. Найди в DB.transactions. Авторазврат если auto_refund_ok=true и сумма до 10000₽.
+3. БЛОКИРОВКИ ФНС/ФССП — спроси ID кошелька, найди в DB.gov_blocks, выведи таблицу ограничений с реквизитами для оплаты.
+4. ФИНМОНИТОРИНГ (115-ФЗ) — найди в DB.compliance, выдай персональный список документов.
+5. ЗАКРЫТИЕ КОШЕЛЬКА — проверь обременения (рассрочка, блокировки), если чисто — подтверди закрытие.
+6. РАССРОЧКА — НЕ консультируй по деталям рассрочки. Сообщи что банк не предоставляет эту услугу и перенаправь к партнёру из DB.installments.
+7. ФИНЦЕРТ / КИБЕРБЕЗОПАСНОСТЬ — используй данные из DB.fincert.
+
+БАЗА ДАННЫХ СИСТЕМ:
+${db}
+
+При запросе ID — ищи точное совпадение. Если не найдено — сообщи и предложи проверить номер.
+Всегда указывай источник: [Антифрод], [ФССП], [ФНС], [Комплаенс] и т.д.`,
+
+    operator: `${base}
+
+РЕЖИМ: Помощник оператора службы поддержки.
+Помогаешь операторам быстро найти ответы по регламентам и работе с клиентами.
+
+ИСПОЛЬЗУЙ:
+- DB.hr_regs — регламенты: отпуск, больничный, зарплата, эскалация, возвраты, шаблоны
+- DB.wallets, DB.gov_blocks, DB.compliance, DB.transactions — для поиска информации по клиенту
+- Любой запрос вида "ID WLT-XXXXX" или "TXN-XXXXX" — ищи в базе и выдавай полное досье
+
+ПРИОРИТЕТЫ:
+- Быстрые четкие инструкции с нумерацией шагов
+- Шаблоны ответов — давай готовый текст
+- Правила возврата, эскалации — точные суммы и процедуры
+
+БАЗА ДАННЫХ:
+${db}`,
+
+    newbie: `${base}
+
+РЕЖИМ: Наставник для новых сотрудников.
+Тон: тёплый, поддерживающий. Здесь нет глупых вопросов.
+
+ИСПОЛЬЗУЙ DB.onboarding для ответов на вопросы о:
+- Первом дне, чеклисте
+- Доступах к системам
+- Наставнике
+- Зарплате
+- Дресс-коде
+- Корпоративной культуре
+
+Также можешь помочь с общими вопросами о работе, процедурах и регламентах из DB.hr_regs.
+
+БАЗА ДАННЫХ:
+${db}`,
+
+    hr: `${base}
+
+РЕЖИМ: HR-ассистент для сотрудников компании.
+Отвечаешь на вопросы о внутренних процедурах, регламентах, правилах.
+
+ИСПОЛЬЗУЙ:
+- DB.hr_regs — все HR-регламенты
+- DB.onboarding — адаптация
+- DB.wallets и другие системы — если оператор спрашивает по клиентскому кейсу
+
+Давай точные пошаговые инструкции. Для шаблонов — готовый текст.
+
+БАЗА ДАННЫХ:
+${db}`
+  };
+
+  return modes[mode] || modes.client;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  БЫСТРЫЕ КНОПКИ ПО РЕЖИМАМ
+// ═══════════════════════════════════════════════════════════
+const QUICK = {
+  client: [
+    ['🔒 Блокировка кошелька', 'У меня заблокирован кошелёк WLT-28847'],
+    ['💸 Возврат средств', 'Хочу вернуть деньги по транзакции TXN-88821'],
+    ['🏛️ Арест ФНС/ФССП', 'На кошельке WLT-77412 арест, что делать?'],
+    ['📄 115-ФЗ документы', 'Запросили документы по 115-ФЗ, кошелёк WLT-10021'],
+    ['🔄 Рассрочка', 'Вопрос по рассрочке'],
+    ['🚨 Финцерт', 'Подозрение на мошенничество, куда сообщить?'],
+  ],
+  operator: [
+    ['📋 Правила возврата', 'Каковы правила возврата средств клиенту?'],
+    ['⚡ Эскалация', 'Как правильно эскалировать сложный кейс?'],
+    ['✉️ Шаблон жалобы', 'Дай шаблон ответа на жалобу'],
+    ['🔍 Досье WLT-10021', 'Покажи досье по клиенту WLT-10021'],
+    ['🔍 Транзакция TXN-44210', 'Проверь транзакцию TXN-44210'],
+    ['📊 Блокировка WLT-77412', 'Проверь статус кошелька WLT-77412'],
+  ],
+  newbie: [
+    ['👋 Первый день', 'Что делать в первый рабочий день?'],
+    ['🔑 Доступы', 'Как получить доступы к системам?'],
+    ['👤 Наставник', 'Кто мой наставник и как с ним связаться?'],
+    ['💰 Зарплата', 'Когда и как выплачивается зарплата?'],
+    ['👔 Дресс-код', 'Какой дресс-код в компании?'],
+    ['🏢 Культура', 'Расскажи о корпоративной культуре'],
+  ],
+  hr: [
+    ['🏖️ Оформить отпуск', 'Как оформить отпуск?'],
+    ['🏥 Больничный', 'Как открыть больничный?'],
+    ['💰 Зарплата', 'Когда выплачивается зарплата?'],
+    ['⚡ Эскалация', 'Порядок эскалации конфликтного клиента'],
+    ['✉️ Шаблон жалобы', 'Дай шаблон ответа на жалобу клиента'],
+    ['💳 Правила возврата', 'Какой порядок возврата средств?'],
+  ]
+};
+
+const WELCOME = {
+  client: 'Здравствуйте! Я **AI Guardian** — ваш цифровой ассистент.\n\nПомогу с вопросами по кошельку, блокировками (банк, ФНС, ФССП), возвратами и финмониторингом. Выберите тему или напишите свой вопрос.',
+  operator: 'Добро пожаловать, коллега! 🎧\n\nЯ помогу найти регламент, шаблон ответа, или проверю данные клиента по ID кошелька/транзакции. Что ищем?',
+  newbie: 'Добро пожаловать в команду! 🎉\n\nЗдесь нет глупых вопросов — спрашивайте всё что непонятно. Помогу разобраться в первые дни.',
+  hr: 'HR-ассистент на связи! 📋\n\nОтвечу на вопросы по регламентам, процедурам и внутренним правилам компании.'
+};
+
+// ═══════════════════════════════════════════════════════════
+//  СОСТОЯНИЕ
+// ═══════════════════════════════════════════════════════════
+let currentMode = 'client';
+let history = [];
+let loading = false;
+
+// ═══════════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════════
+function setStatus(on, txt) {
+  document.getElementById('pulse').style.background = on ? '#4caf50' : '#f44336';
+  document.getElementById('stxt').textContent = txt;
+}
+
+function now() {
+  return new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'});
+}
+
+function addMsg(html, role) {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  wrap.innerHTML = `<div class="bubble">${html}</div><div class="mtime">${now()}</div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot'; wrap.id = 'typing';
+  wrap.innerHTML = `<div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+
+function fmt(t) {
+  return t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+function renderQuick(mode) {
+  const q = document.getElementById('quick');
+  q.innerHTML = '';
+  (QUICK[mode] || []).forEach(([label, val]) => {
+    const b = document.createElement('button');
+    b.className = 'qbtn'; b.textContent = label;
+    b.onclick = () => { document.getElementById('inp').value = val; send(); };
+    q.appendChild(b);
+  });
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  history = [];
+  ['client','operator','newbie','hr'].forEach(m => {
+    document.getElementById('m-'+m).classList.toggle('active', m === mode);
+  });
+  document.getElementById('messages').innerHTML = '';
+  renderQuick(mode);
+  const w = WELCOME[mode];
+  addMsg(fmt(w), 'bot');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  API CALL
+// ═══════════════════════════════════════════════════════════
+async function send() {
+  if (loading) return;
+  const inp = document.getElementById('inp');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+
+  document.getElementById('sbtn').disabled = true;
+  loading = true;
+
+  addMsg(fmt(text), 'user');
+  const t = showTyping();
+  setStatus(true, 'Анализирует запрос…');
+
+  history.push({ role: 'user', content: text });
+  if (history.length > 20) history = history.slice(-20);
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1200,
+        system: buildSystem(currentMode),
+        messages: history
+      })
+    });
+    const data = await resp.json();
+    const reply = data.content?.[0]?.text || data.error || 'Ошибка ответа';
+    history.push({ role: 'assistant', content: reply });
+
+    document.getElementById('typing')?.remove();
+    const srcMap = { client: '🛡️ AI Guardian', operator: '🎧 Оператор-мод', newbie: '🎓 Адаптация', hr: '📋 HR-база' };
+    addMsg(fmt(reply) + `<div class="src">${srcMap[currentMode]}</div>`, 'bot');
+    setStatus(true, 'Онлайн • Claude Sonnet');
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    addMsg('⚠️ Ошибка: ' + e.message, 'bot');
+    setStatus(false, 'Ошибка соединения');
+  }
+
+  loading = false;
+  document.getElementById('sbtn').disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+document.getElementById('inp').addEventListener('keydown', e => {
+  if (e.key === 'Enter') send();
+});
+setMode('client');
+</script>
+</body>
+</html>
